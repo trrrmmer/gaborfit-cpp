@@ -1,7 +1,12 @@
 {
-  "version": "0.1.0",
-  "abi_version": 1,
+  "package_version": "0.2.0",
+  "gabor_c_abi_version": 1,
+  "eeg_clean_c_abi_version": 1,
   "language_standard": "C++17",
-  "backend": "eigen-bounded-lm-qr",
-  "numerical_engine_frozen": true
+  "eigen_version": "3.4.0",
+  "optimization_backend": "eigen-bounded-lm-qr",
+  "frozen_gabor_cpp_sha256": "f2f97d5e52a68ce55f70d2b14c8af03804cde21405ee2337059535ea802d5da6",
+  "frozen_gabor_hpp_sha256": "4e7264bc5ce0b00360a4e69fafbd31c528f9cbcf32daeb706cacb1818aacd29e",
+  "frozen_eeg_clean_cpp_sha256": "9d38ccdb05e3d1cc5c552af6445fc40f63ab96de1b7f988551bec909b5d8d1f8",
+  "frozen_eeg_clean_hpp_sha256": "1001ec7a1eed268c48efddca6a332a8e4508df2ae6b247108b894d81f4ed0b5e"
 }

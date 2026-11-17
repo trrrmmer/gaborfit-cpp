@@ -1,64 +1,73 @@
-# GaborFit C++
+# GaborFit EEG Muscle Artifact Removal
 
-GaborFit is a standalone C++17 library for bounded five-parameter Gabor fitting:
+GaborFit is a native C++17 library that detects short muscle-artifact spikes in
+single-channel EEG or ICA-component time series, fits bounded one-dimensional
+Gabor waveforms, and subtracts accepted fits. It also exposes the Gabor fitter as
+an independent general-purpose API. MATLAB, Python and Julia are not required at
+runtime.
 
-```text
-g(t) = A exp(-(t-t0)^2 / (2 sigma^2)) cos(2 pi f (t-t0) + phase)
-```
+The software targets transient, oscillatory EMG spikes. It is not a replacement
+for ICA decomposition, channel rejection, or clinical review, and it should not
+be applied blindly to ordinary cerebral high-frequency activity.
 
-Parameters use amplitude units, Hz, radians, and seconds. The numerical core has
-no MATLAB, Python, or Julia runtime dependency. It supports uniform sampling or
-explicit strictly increasing time vectors, arbitrary window lengths, optional
-nonnegative sample weights/masks, caller-provided bounds and starts, and reusable
-fitting contexts.
+## Highlights
 
-The numerical algorithm is frozen at version 0.1.0. It uses analytic derivatives,
-two-stage bounded LM/QR, Jacobian scaling, safe projection, deterministic fallback,
-and optional reference-independent QC/rescue.
+- Complete one-pass or multi-pass native cleaning.
+- Frozen analytic bounded LM/QR Gabor fitter with deterministic fallback.
+- C++ API, stable C ABI v1, Python `ctypes`, and experimental MATLAB MEX.
+- Sampling-rate-independent parameters expressed in seconds and hertz.
+- Per-pass and per-event diagnostics, including rejected fits.
+- CMake builds for Linux, Windows, macOS Intel, and macOS Apple Silicon.
+- Synthetic-only cross-platform tests; no EEG or participant data are included.
 
-## Build and test
+## Quick start
 
-Eigen is pinned to 3.4.0 and downloaded from the official release archive (with
-an immutable fallback mirror) using SHA-256 verification. CMake 3.18 or newer
-is required.
+Requirements: CMake 3.18+, a C++17 compiler, and either internet access for the
+pinned Eigen 3.4.0 archive or an installed exact Eigen 3.4.0 package.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGABORFIT_ENABLE_CERES=OFF
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
-cmake --install build --prefix /desired/prefix
+./build/gaborfit_clean_example       # Windows: build\Release\gaborfit_clean_example.exe
 ```
 
-For an offline build with an already installed *exact* Eigen 3.4.0 package, add
-`-DGABORFIT_USE_SYSTEM_EIGEN=ON`. Eigen is private to the library implementation;
-installed GaborFit consumers do not need to locate Eigen.
+Minimal C++ use:
 
-The installed CMake target is `GaborFit::gaborfit`. Public interfaces are:
+```cpp
+#include <gabor/eeg_clean.hpp>
+gabor::eeg::Cleaner cleaner(signal.size());
+gabor::eeg::Options options;
+options.pass_count = 1;
+auto result = cleaner.clean(signal.data(), signal.size(), sampling_rate_hz, options);
+if (!result.valid) throw std::runtime_error(result.diagnostic);
+const std::vector<double>& cleaned = result.cleaned;
+```
 
-- C++: `include/gabor/gabor.hpp`
-- stable C ABI v1: `include/gabor/gabor_c.h`
-- Python ctypes: `python/gaborfit.py`
-- experimental MATLAB MEX: `matlab/gabor_fit_mex.cpp`
+The default cleaner preserves input length and ordering. Native diagnostic sample
+indices are zero-based and windows are inclusive.
 
-Reuse one `gabor::Fitter`, `gaborfit_context`, or Python `Fitter` to retain work
-buffers. The stable integration boundary is the C ABI; C++ ABI compatibility is
-not promised across incompatible compiler or runtime versions.
+## Documentation
 
-## Numerical requirements
+- [Installation on each platform](INSTALL.md)
+- [Practical user guide](USER_GUIDE.md)
+- [Parameter selection and tuning](PARAMETER_GUIDE.md)
+- [Reproducible synthetic examples](EXAMPLES.md)
+- [API and ABI reference](API.md)
+- [Scientific and technical limitations](SCIENTIFIC_LIMITATIONS.md)
 
-- At least five finite signal samples and five positive-weight samples.
-- Positive finite uniform sampling frequency, or finite strictly increasing times.
-- Nonnegative frequency bounds and strictly positive sigma bounds.
-- Finite lower bounds strictly below upper bounds.
-- Frequencies are not silently clipped to Nyquist. Uniform fits above Nyquist are
-  flagged by QC because the generating frequency is not identifiable.
+The accepted development benchmark used six real 30,000-sample ICA recordings
+and measured a 26.4× aggregate end-to-end speedup over corrected MATLAB on the
+same Linux workstation. This is a workload-specific development result, not a
+cross-platform performance guarantee or independent clinical validation.
 
-The objective is weighted mean squared residual normalized by total sample weight.
+## Version and scientific status
 
-## Continuous integration
+Version `0.2.0` packages the frozen Gabor engine and frozen complete cleaner.
+Different optimizers may produce different local minima even when waveforms are
+scientifically comparable. Greater removed energy is not proof of better
+cleaning. Inspect event diagnostics, spectra, and representative time-domain
+segments before using results scientifically.
 
-CI uses synthetic signals only. It builds and tests Linux x86-64/GCC, Windows
-x86-64/MSVC, macOS Intel/Clang, and macOS Apple Silicon/Clang. Tests cover the
-C++ and C APIs, shared-library exports/loading, Python ctypes, CMake installation,
-sampling rates from 250 to 4,000 Hz, windows from 51 to 801 samples, nonuniform
-times, weights, bounds, signed amplitudes, and invalid inputs.
+No redistribution license is currently included; see
+[license status](LICENSE_NOT_PROVIDED.md) before any public release.

@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.18)
-project(gaborfit VERSION 0.1.0 LANGUAGES C CXX)
+project(gaborfit VERSION 0.2.0 LANGUAGES C CXX)
 
 option(GABORFIT_BUILD_SHARED "Build shared C ABI library" ON)
 option(GABORFIT_BUILD_TESTS "Build native tests" ON)
 option(GABORFIT_ENABLE_CERES "Prefer Ceres when an installation is available" ON)
 option(GABORFIT_USE_SYSTEM_EIGEN "Use an installed Eigen 3.4.0 instead of the pinned archive" OFF)
+option(GABORFIT_BUILD_EEG_CLEANER "Build the complete EEG muscle-artifact cleaner" ON)
+option(GABORFIT_BUILD_EXAMPLES "Build command-line examples" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,6 +33,7 @@ else()
   set(GABORFIT_EIGEN_TARGET gaborfit_eigen_headers)
   message(STATUS "Using pinned Eigen 3.4.0 archive (${gaborfit_eigen_SOURCE_DIR})")
 endif()
+
 if(GABORFIT_ENABLE_CERES)
   find_package(Ceres QUIET)
 endif()
@@ -63,6 +66,31 @@ else()
   target_compile_options(gaborfit PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+if(GABORFIT_BUILD_EEG_CLEANER)
+  add_library(gaborfit_eeg SHARED src/eeg_clean.cpp src/eeg_clean_c.cpp)
+  add_library(GaborFit::eeg_clean ALIAS gaborfit_eeg)
+  set_target_properties(gaborfit_eeg PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    EXPORT_NAME eeg_clean
+    WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  target_include_directories(gaborfit_eeg PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(gaborfit_eeg PUBLIC GaborFit::gaborfit)
+  target_compile_definitions(gaborfit_eeg PRIVATE GABORFIT_EEG_BUILDING_LIBRARY)
+  if(MSVC)
+    target_compile_options(gaborfit_eeg PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(gaborfit_eeg PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+endif()
+
+if(GABORFIT_BUILD_EXAMPLES AND GABORFIT_BUILD_EEG_CLEANER)
+  add_executable(gaborfit_clean_example examples/clean_synthetic.cpp)
+  target_link_libraries(gaborfit_clean_example PRIVATE GaborFit::eeg_clean)
+endif()
+
 if(GABORFIT_BUILD_TESTS)
   enable_testing()
   add_executable(gaborfit_tests tests/test_gabor.cpp)
@@ -76,6 +104,11 @@ if(GABORFIT_BUILD_TESTS)
   add_executable(gaborfit_eigen_version_test tests/test_eigen_version.cpp)
   target_link_libraries(gaborfit_eigen_version_test PRIVATE ${GABORFIT_EIGEN_TARGET})
   add_test(NAME gaborfit_eigen_version_test COMMAND gaborfit_eigen_version_test)
+  if(GABORFIT_BUILD_EEG_CLEANER)
+    add_executable(gaborfit_eeg_tests tests/test_eeg_clean.cpp)
+    target_link_libraries(gaborfit_eeg_tests PRIVATE GaborFit::eeg_clean)
+    add_test(NAME gaborfit_eeg_tests COMMAND gaborfit_eeg_tests)
+  endif()
 endif()
 
 include(GNUInstallDirs)
@@ -85,7 +118,11 @@ configure_package_config_file(cmake/GaborFitConfig.cmake.in
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/GaborFit)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/GaborFitConfigVersion.cmake
   VERSION ${PROJECT_VERSION} COMPATIBILITY SameMajorVersion)
-install(TARGETS gaborfit EXPORT GaborFitTargets
+set(GABORFIT_INSTALL_TARGETS gaborfit)
+if(GABORFIT_BUILD_EEG_CLEANER)
+  list(APPEND GABORFIT_INSTALL_TARGETS gaborfit_eeg)
+endif()
+install(TARGETS ${GABORFIT_INSTALL_TARGETS} EXPORT GaborFitTargets
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

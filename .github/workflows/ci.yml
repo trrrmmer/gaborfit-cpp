@@ -40,8 +40,18 @@ jobs:
           python-version: '3.12'
       - name: Test Python ctypes wrapper
         run: |
+          python python/verify_hashes.py
           python -m pip install --disable-pip-version-check numpy
           python python/test_ctypes.py
+          python python/test_eeg_clean_ctypes.py
+          python examples/clean_synthetic.py
+      - name: Run native cleaner example (Unix)
+        if: runner.os != 'Windows'
+        run: ./build/gaborfit_clean_example
+      - name: Run native cleaner example (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& build/Release/gaborfit_clean_example.exe'
       - name: Test synthetic sampling/window/bound matrix
         run: |
           python python/benchmark_synthetic.py
@@ -51,11 +61,15 @@ jobs:
         run: |
           nm -D --defined-only build/libgaborfit.so | grep ' gaborfit_fit$'
           nm -D --defined-only build/libgaborfit.so | grep ' gaborfit_abi_version$'
+          nm -D --defined-only build/libgaborfit_eeg.so | grep ' gaborfit_eeg_clean$'
+          nm -D --defined-only build/libgaborfit_eeg.so | grep ' gaborfit_eeg_abi_version$'
       - name: Check exported C ABI symbols (macOS)
         if: runner.os == 'macOS'
         run: |
           nm -gU build/libgaborfit.dylib | grep ' _gaborfit_fit$'
           nm -gU build/libgaborfit.dylib | grep ' _gaborfit_abi_version$'
+          nm -gU build/libgaborfit_eeg.dylib | grep ' _gaborfit_eeg_clean$'
+          nm -gU build/libgaborfit_eeg.dylib | grep ' _gaborfit_eeg_abi_version$'
       - name: Check exported C ABI symbols (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -77,6 +91,16 @@ jobs:
             Write-Host 'Complete dumpbin export table:'
             Write-Host $exportText
             throw "Missing exact undecorated C ABI export(s): $($missing -join ', ')"
+          }
+          $eegLines = & dumpbin.exe /exports build/Release/gaborfit_eeg.dll 2>&1
+          $eegExitCode = $LASTEXITCODE
+          $eegText = $eegLines -join [Environment]::NewLine
+          if ($eegExitCode -ne 0) { Write-Host $eegText; throw "EEG dumpbin failed with exit code $eegExitCode" }
+          $cleanPattern = '(?m)^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+gaborfit_eeg_clean(?:\s|$)'
+          $eegAbiPattern = '(?m)^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+gaborfit_eeg_abi_version(?:\s|$)'
+          if (-not [regex]::IsMatch($eegText, $cleanPattern) -or -not [regex]::IsMatch($eegText, $eegAbiPattern)) {
+            Write-Host 'Complete EEG export table:'; Write-Host $eegText
+            throw 'Missing exact undecorated EEG C ABI exports'
           }
       - name: Install package
         run: cmake --install build --config Release --prefix "${{ github.workspace }}/install"

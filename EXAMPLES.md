@@ -1,85 +1,73 @@
 # Empirical EEG/ICA cleaning examples
 
-Figures 11–16 use genuine, contiguous two-second ICA-component intervals from
-six validated benchmark recordings. The frozen native C++ cleaner was run on
-each complete 30-second recording before the displayed interval was extracted,
-preserving the detector's continuous-recording context.
+Figures 11–16 show one-second intervals from six real ICA-component recordings.
+The program cleaned each full 30-second recording first. The one-second view was
+then taken from the result. This keeps the normal detection context around each
+example.
 
-Every figure shows the empirical input with genuine accepted-event markers,
-cumulative fitted subtraction computed as `original - final cleaned`, and the
-final cleaned signal. All three panels in an example use identical amplitude
-limits and span exactly 0–2 s. No waveform, event, residual, or fitted curve was
-added, smoothed, retouched, or independently rescaled.
+Each figure has three panels: the original signal, the total fitted subtraction,
+and the final cleaned signal. A triangle marks an event accepted by the native
+cleaner. The three panels use the same amplitude scale. The subtraction is
+exactly `original - final cleaned`. The signals were not smoothed or retouched.
 
-The six established PNG filenames are retained for compatibility with existing
-links. Figure headers state the actual sampling frequency, pass count, event
-count, and amplitude range. In particular, the legacy filename
-`sampling_500_hz.png` now contains a 1000 Hz empirical example, and
-`three_passes.png` reports the actual five full-recording passes.
+The filenames are kept so that old links still work. All examples were recorded
+at 1000 Hz. All source recordings used five cleaning passes.
 
-The rendered figures use neutral recording codes. Original recordings, numerical
-arrays, participant and source-recording identifiers, source hashes, and
-event-level provenance remain outside this repository.
+The figures use neutral recording codes. Source recordings, numerical arrays,
+source names, hashes and event-level provenance remain in the private workspace.
 
-## 1. Distributed moderate-amplitude events
+## 1. Repeated narrow spikes
 
-W1 contains 15 accepted events with comparable amplitudes distributed across the
-two-second view. No single onset event controls the amplitude scale.
+W1 contains 17 accepted events. Several narrow spikes rise clearly above a quiet
+background, so the fitted subtraction is easy to compare with the input.
 
-![W1: empirical two-second ICA signal, accepted events, cumulative fitted subtraction and final cleaned signal](examples/generated/single_isolated.png)
+![W1: one-second empirical ICA signal with 17 accepted events, cumulative subtraction and final cleaned signal](examples/generated/single_isolated.png)
 
-## 2. Separated accepted events
+## 2. Clear events on a quiet background
 
-W2 contains seven well-separated events from a three-pass full-recording run.
-The wider spacing makes individual fitted subtractions easy to inspect.
+W2 contains 12 accepted events. The larger spikes are separated well enough to
+follow them from the original signal to the subtraction and cleaned signal.
 
-![W2: seven separated empirical events and their actual native subtraction](examples/generated/multiple_separated.png)
+![W2: one-second empirical ICA signal with 12 accepted events and the actual native subtraction](examples/generated/multiple_separated.png)
 
-## 3. Varied but visually separable events
+## 3. A small group of visible spikes
 
-W3 contains 13 events of broadly similar scale on realistic background activity.
-Small residual activity remains visible without dominating the presentation.
+W3 contains nine accepted events. This less crowded view is useful for checking
+individual event markers and the local effect of cleaning.
 
-![W3: empirical accepted events with shared original, subtraction and cleaned amplitude axes](examples/generated/closely_spaced.png)
+![W3: one-second empirical ICA signal with nine accepted events and shared amplitude axes](examples/generated/closely_spaced.png)
 
-## 4. Lower-amplitude empirical activity
+## 4. Mixed event sizes
 
-W4 contains 11 lower-amplitude events. Its narrower common amplitude range shows
-that the cleaner and diagnostic display are not restricted to large artifacts.
+W4 contains 14 accepted events. It shows that one recording can contain both
+clear spikes and smaller accepted events.
 
-![W4: lower-amplitude empirical events shown over exactly two seconds](examples/generated/sampling_500_hz.png)
+![W4: one-second empirical ICA signal with 14 accepted events](examples/generated/sampling_500_hz.png)
 
-## 5. Moderately frequent transient activity
+## 5. Strong clustered activity
 
-W5 contains 17 accepted events from a three-pass full-recording run. Events are
-frequent but remain individually recognizable.
+W5 contains 18 accepted events. The original signal has a clear high-amplitude
+cluster, while genuine background and residual activity remain visible.
 
-![W5: moderately frequent empirical transient activity and actual fitted subtraction](examples/generated/dense_activity.png)
+![W5: one-second empirical ICA signal with a strong cluster and actual fitted subtraction](examples/generated/dense_activity.png)
 
-## 6. Higher event count without a dominating onset artifact
+## 6. Several high-contrast spikes
 
-W6 contains 24 accepted events distributed across the view. It provides the
-highest event count in the worked examples while retaining readable individual
-spikes and a balanced shared amplitude scale.
+W6 contains 18 accepted events. The main spikes are easy to see in the original
+recording, and the common scale shows the size of the actual subtraction.
 
-![W6: higher-count empirical activity with readable accepted events and final cleaning](examples/generated/three_passes.png)
+![W6: one-second empirical ICA signal with several high-contrast accepted events](examples/generated/three_passes.png)
 
 Small residual spike-like components can remain after cleaning. Additional
-passes may reduce some residuals when their morphology and selected parameters
-make them eligible, but additional passes do not guarantee improvement.
+passes may reduce some residuals when their morphology and the selected
+parameters make them eligible, but additional passes do not guarantee
+improvement.
 
-## Synthetic numerical fixtures
+The compact command-line example `gaborfit_clean_example` and
+`examples/clean_synthetic.py` remain reproducible API smoke tests. Their
+synthetic signals are numerical fixtures and are not presented as representative
+scientific cleaning results.
 
-Synthetic signals remain available strictly for reproducible interface and
-regression testing:
-
-```bash
-PYTHONPATH=python python examples/generate_examples.py
-```
-
-The script writes clearly labelled outputs under
-`examples/generated/synthetic_test_outputs/`, isolated from the approved
-empirical PNG files. It cannot overwrite the public scientific examples. The
-compact command-line example `gaborfit_clean_example` and
-`examples/clean_synthetic.py` likewise remain API smoke tests without
-scientific-performance claims.
+Appendix A provides ten more one-second empirical examples selected by visual
+review. They include quieter intervals, clustered activity and more difficult
+residual patterns.

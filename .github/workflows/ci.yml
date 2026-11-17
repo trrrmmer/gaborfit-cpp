@@ -60,8 +60,24 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $exports = dumpbin /exports build/Release/gaborfit.dll
-          if ($exports -notmatch 'gaborfit_fit' -or $exports -notmatch 'gaborfit_abi_version') { throw 'C ABI exports missing' }
+          $exportLines = & dumpbin.exe /exports build/Release/gaborfit.dll 2>&1
+          $dumpbinExitCode = $LASTEXITCODE
+          $exportText = $exportLines -join [Environment]::NewLine
+          if ($dumpbinExitCode -ne 0) {
+            Write-Host 'Complete dumpbin output:'
+            Write-Host $exportText
+            throw "dumpbin failed with exit code $dumpbinExitCode"
+          }
+          $fitPattern = '(?m)^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+gaborfit_fit(?:\s|$)'
+          $abiPattern = '(?m)^\s*\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+gaborfit_abi_version(?:\s|$)'
+          $missing = @()
+          if (-not [regex]::IsMatch($exportText, $fitPattern)) { $missing += 'gaborfit_fit' }
+          if (-not [regex]::IsMatch($exportText, $abiPattern)) { $missing += 'gaborfit_abi_version' }
+          if ($missing.Count -ne 0) {
+            Write-Host 'Complete dumpbin export table:'
+            Write-Host $exportText
+            throw "Missing exact undecorated C ABI export(s): $($missing -join ', ')"
+          }
       - name: Install package
         run: cmake --install build --config Release --prefix "${{ github.workspace }}/install"
       - name: Configure installed-package consumer (Unix)

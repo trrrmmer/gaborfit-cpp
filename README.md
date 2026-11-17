@@ -18,7 +18,26 @@ be applied blindly to ordinary cerebral high-frequency activity.
 - Sampling-rate-independent parameters expressed in seconds and hertz.
 - Per-pass and per-event diagnostics, including rejected fits.
 - CMake builds for Linux, Windows, macOS Intel, and macOS Apple Silicon.
-- Synthetic-only cross-platform tests; no EEG or participant data are included.
+- Cross-platform CI and the public illustrated manual use synthetic,
+  non-identifying data only. No empirical EEG arrays or figures are included.
+
+## Illustrated user manual
+
+The [illustrated English user manual](docs/manual/GaborFit_User_Manual_0.2.0.pdf)
+covers installation, native C++, Python `ctypes`, MATLAB MEX and command-line
+use, parameter selection, troubleshooting, scientific limitations and
+reproducible synthetic cleaning examples.
+
+| Platform | Native build | Interfaces |
+|---|---|---|
+| Linux x86-64 | GCC/Clang with CMake | C++, C ABI, Python `ctypes`, MATLAB MEX |
+| Windows x86-64 | MSVC with CMake | C++, C ABI, Python `ctypes`, MATLAB MEX |
+| macOS Intel x86-64 | Apple Clang with CMake | C++, C ABI, Python `ctypes`, MATLAB MEX |
+| macOS Apple Silicon ARM64 | Apple Clang with CMake | C++, C ABI, Python `ctypes`, MATLAB MEX |
+
+MATLAB support is experimental and each MATLAB platform requires a locally
+compiled MEX binary. Python and MATLAB are optional; the native library has no
+runtime dependency on either environment.
 
 ## Quick start
 
@@ -55,6 +74,7 @@ indices are zero-based and windows are inclusive.
 - [Reproducible synthetic examples](EXAMPLES.md)
 - [API and ABI reference](API.md)
 - [Scientific and technical limitations](SCIENTIFIC_LIMITATIONS.md)
+- [Illustrated empirical user manual](docs/manual/GaborFit_User_Manual_0.2.0.pdf)
 
 The accepted development benchmark used six real 30,000-sample ICA recordings
 and measured a 26.4× aggregate end-to-end speedup over corrected MATLAB on the
@@ -69,5 +89,6 @@ scientifically comparable. Greater removed energy is not proof of better
 cleaning. Inspect event diagnostics, spectra, and representative time-domain
 segments before using results scientifically.
 
-No redistribution license is currently included; see
-[license status](LICENSE_NOT_PROVIDED.md) before any public release.
+The independently developed C++ code is distributed under the
+[BSD 3-Clause License](LICENSE). Third-party dependencies remain subject to
+their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

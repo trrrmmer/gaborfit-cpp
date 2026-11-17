@@ -4,13 +4,33 @@ project(gaborfit VERSION 0.1.0 LANGUAGES C CXX)
 option(GABORFIT_BUILD_SHARED "Build shared C ABI library" ON)
 option(GABORFIT_BUILD_TESTS "Build native tests" ON)
 option(GABORFIT_ENABLE_CERES "Prefer Ceres when an installation is available" ON)
+option(GABORFIT_USE_SYSTEM_EIGEN "Use an installed Eigen 3.4.0 instead of the pinned archive" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+if(GABORFIT_USE_SYSTEM_EIGEN)
+  find_package(Eigen3 3.4.0 EXACT REQUIRED NO_MODULE)
+  set(GABORFIT_EIGEN_TARGET Eigen3::Eigen)
+  message(STATUS "Using explicitly requested system Eigen ${Eigen3_VERSION}")
+else()
+  include(FetchContent)
+  FetchContent_Declare(gaborfit_eigen
+    URL
+      https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz
+      https://huggingface.co/csukuangfj/sherpa-onnx-cmake-deps/resolve/27996728725ac6303bf3525099cb36d19dd09677/eigen-3.4.0.tar.gz
+    URL_HASH SHA256=8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72)
+  FetchContent_GetProperties(gaborfit_eigen)
+  if(NOT gaborfit_eigen_POPULATED)
+    FetchContent_Populate(gaborfit_eigen)
+  endif()
+  add_library(gaborfit_eigen_headers INTERFACE)
+  target_include_directories(gaborfit_eigen_headers INTERFACE ${gaborfit_eigen_SOURCE_DIR})
+  set(GABORFIT_EIGEN_TARGET gaborfit_eigen_headers)
+  message(STATUS "Using pinned Eigen 3.4.0 archive (${gaborfit_eigen_SOURCE_DIR})")
+endif()
 if(GABORFIT_ENABLE_CERES)
   find_package(Ceres QUIET)
 endif()
@@ -29,7 +49,7 @@ set_target_properties(gaborfit PROPERTIES
 target_include_directories(gaborfit PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_link_libraries(gaborfit PUBLIC Eigen3::Eigen)
+target_link_libraries(gaborfit PRIVATE ${GABORFIT_EIGEN_TARGET})
 target_compile_definitions(gaborfit PRIVATE GABORFIT_BUILDING_LIBRARY)
 if(Ceres_FOUND)
   target_compile_definitions(gaborfit PUBLIC GABORFIT_CERES_AVAILABLE=1)
@@ -53,6 +73,9 @@ if(GABORFIT_BUILD_TESTS)
     C_STANDARD 11 C_STANDARD_REQUIRED ON LINKER_LANGUAGE CXX)
   target_link_libraries(gaborfit_c_api_tests PRIVATE GaborFit::gaborfit)
   add_test(NAME gaborfit_c_api_tests COMMAND gaborfit_c_api_tests)
+  add_executable(gaborfit_eigen_version_test tests/test_eigen_version.cpp)
+  target_link_libraries(gaborfit_eigen_version_test PRIVATE ${GABORFIT_EIGEN_TARGET})
+  add_test(NAME gaborfit_eigen_version_test COMMAND gaborfit_eigen_version_test)
 endif()
 
 include(GNUInstallDirs)

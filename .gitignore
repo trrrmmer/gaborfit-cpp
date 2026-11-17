@@ -1,6 +1,6 @@
-/build/
-/consumer-build/
-/install/
+/build*/
+/consumer*/
+/install*/
 /results/
 __pycache__/
 *.py[cod]

@@ -18,7 +18,9 @@ and optional reference-independent QC/rescue.
 
 ## Build and test
 
-Eigen 3.3 or newer and CMake 3.18 or newer are required.
+Eigen is pinned to 3.4.0 and downloaded from the official release archive (with
+an immutable fallback mirror) using SHA-256 verification. CMake 3.18 or newer
+is required.
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DGABORFIT_ENABLE_CERES=OFF
@@ -26,6 +28,10 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 cmake --install build --prefix /desired/prefix
 ```
+
+For an offline build with an already installed *exact* Eigen 3.4.0 package, add
+`-DGABORFIT_USE_SYSTEM_EIGEN=ON`. Eigen is private to the library implementation;
+installed GaborFit consumers do not need to locate Eigen.
 
 The installed CMake target is `GaborFit::gaborfit`. Public interfaces are:
 

@@ -1,0 +1,97 @@
+name: native-cpp
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            architecture: x86-64
+          - os: windows-latest
+            architecture: x86-64
+          - os: macos-15-intel
+            architecture: x86-64
+            cmake_arch: x86_64
+          - os: macos-14
+            architecture: arm64
+            cmake_arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Install Eigen (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libeigen3-dev
+      - name: Install Eigen (macOS)
+        if: runner.os == 'macOS'
+        run: brew install eigen
+      - name: Install Eigen (Windows)
+        if: runner.os == 'Windows'
+        run: vcpkg install eigen3:x64-windows
+      - name: Configure (Linux)
+        if: runner.os == 'Linux'
+        run: cmake -S . -B build -DGABORFIT_ENABLE_CERES=OFF -DCMAKE_BUILD_TYPE=Release
+      - name: Configure (macOS native architecture)
+        if: runner.os == 'macOS'
+        run: cmake -S . -B build -DGABORFIT_ENABLE_CERES=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.cmake_arch }}
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -S . -B build -A x64 -DGABORFIT_ENABLE_CERES=OFF -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test Python ctypes wrapper
+        run: |
+          python -m pip install --disable-pip-version-check numpy
+          python python/test_ctypes.py
+      - name: Test synthetic sampling/window/bound matrix
+        run: |
+          python python/benchmark_synthetic.py
+          python python/benchmark_synthetic_edges.py
+      - name: Check exported C ABI symbols (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          nm -D --defined-only build/libgaborfit.so | grep ' gaborfit_fit$'
+          nm -D --defined-only build/libgaborfit.so | grep ' gaborfit_abi_version$'
+      - name: Check exported C ABI symbols (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          nm -gU build/libgaborfit.dylib | grep ' _gaborfit_fit$'
+          nm -gU build/libgaborfit.dylib | grep ' _gaborfit_abi_version$'
+      - name: Check exported C ABI symbols (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exports = dumpbin /exports build/Release/gaborfit.dll
+          if ($exports -notmatch 'gaborfit_fit' -or $exports -notmatch 'gaborfit_abi_version') { throw 'C ABI exports missing' }
+      - name: Install package
+        run: cmake --install build --config Release --prefix "${{ github.workspace }}/install"
+      - name: Configure installed-package consumer (Unix)
+        if: runner.os != 'Windows'
+        run: cmake -S tests/install_consumer -B consumer-build -DCMAKE_PREFIX_PATH="${{ github.workspace }}/install" -DCMAKE_BUILD_TYPE=Release
+      - name: Configure installed-package consumer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -S tests/install_consumer -B consumer-build -DCMAKE_PREFIX_PATH="$env:GITHUB_WORKSPACE/install" -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+      - name: Build installed-package consumer
+        run: cmake --build consumer-build --config Release
+      - name: Run installed-package consumer (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          export LD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${LD_LIBRARY_PATH:-}"
+          export DYLD_LIBRARY_PATH="${{ github.workspace }}/install/lib:${DYLD_LIBRARY_PATH:-}"
+          ./consumer-build/gaborfit_install_consumer
+      - name: Run installed-package consumer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:GITHUB_WORKSPACE/install/bin;$env:PATH"
+          & consumer-build/Release/gaborfit_install_consumer.exe
+

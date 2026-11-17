@@ -1,0 +1,14 @@
+/build/
+/consumer-build/
+/install/
+/results/
+__pycache__/
+*.py[cod]
+*.dll
+*.dylib
+*.so
+*.so.*
+*.mex*
+*.pdb
+*.obj
+*.o

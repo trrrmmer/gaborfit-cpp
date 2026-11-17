@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "abi_version": 1,
+  "language_standard": "C++17",
+  "backend": "eigen-bounded-lm-qr",
+  "numerical_engine_frozen": true
+}

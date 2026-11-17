@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.18)
+project(gaborfit_install_consumer LANGUAGES CXX)
+find_package(GaborFit 0.1 CONFIG REQUIRED)
+add_executable(gaborfit_install_consumer main.cpp)
+target_link_libraries(gaborfit_install_consumer PRIVATE GaborFit::gaborfit)
+target_compile_features(gaborfit_install_consumer PRIVATE cxx_std_17)
